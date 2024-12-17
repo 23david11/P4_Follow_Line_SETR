@@ -1,12 +1,14 @@
 #include <WiFi.h> //Wifi library
 #include <PubSubClient.h>
+#include "pass.h"
 
-//#define EAP_ANONYMOUS_IDENTITY "20220719anonymous@urjc.es" // leave as it is
-//#define EAP_IDENTITY "USER@urjc.es"    // Use your URJC email
-#define EAP_PASSWORD "XD9RU39Fcs"            // User your URJC password
-//#define EAP_USERNAME "USER@urjc.es"    // Use your URJC email
+// #define EAP_ANONYMOUS_IDENTITY "20220719anonymous@urjc.es" // leave as it is
+// #define EAP_IDENTITY "d.ponsc.2022@alumnos.urjc.es"    // Use your URJC email
+#define EAP_PASSWORD "expiriens"            // User your URJC password
+// #define EAP_USERNAME USER_  // Use your URJC email
+
 //SSID NAME
-const char* ssid = "DIGIFIBRA-Fsb9"; // eduroam SSID
+const char* ssid = "Galaxy S10"; // eduroam SSID
 
 // Configuración del broker MQTT
 const char* mqtt_server = "193.147.79.118";  // Dirección del broker MQTT
@@ -60,7 +62,7 @@ void setup() {
   reconnect();  
 }
 
-String incomingData;
+String sendBuff;
 
 void loop() {
 
@@ -72,18 +74,30 @@ void loop() {
   if (Serial2.available()) {
     String incomingData = "";
 
-    // Leer los datos disponibles
-    while (Serial2.available()) {
-      char c = Serial2.read();
-      incomingData += c;
-    }
-    Serial.print(incomingData);
+    char c = Serial2.read();
+    sendBuff += c;
+    
+    if (c == '$')  {            
+      // Serial.print("Received data in serial port from Arduino: ");
+      Serial.println(sendBuff);
+
+      client.publish(mqtt_topic, sendBuff.c_str());
+      Serial.println("Datos enviados por MQTT.");
+      sendBuff = "";
+    } 
+
+    // // Leer los datos disponibles
+    // while (Serial2.available() > 0) {
+    //   char c = Serial2.read();
+    //   incomingData += c;
+    // }
+    // Serial.print(incomingData);
 
     // Publicar los datos en el tema MQTT
-    if (!incomingData.isEmpty()) {
-      client.publish(mqtt_topic, incomingData.c_str());
-      Serial.println("Datos enviados por MQTT.");
-    }
+    // if (!incomingData.isEmpty()) {
+    //   client.publish(mqtt_topic, sendBuff.c_str());
+    //   Serial.println("Datos enviados por MQTT.");
+    // }
   }
 
 }
