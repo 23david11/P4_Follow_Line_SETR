@@ -32,15 +32,20 @@ CRGB leds[NUM_LEDS];
 #define PIN_Motor_PWMB 6
 
 
-#define MOTOR_SPEED 200
+#define MOTOR_SPEED 255
+// #define MOTOR_SPEED 100
 
 #define RIGHT 0
 #define LEFT 1
 
-# define SENS_THRESHOLD 650
+# define SENS_THRESHOLD 750
 
-int last = RIGHT;
-bool ready = false;
+int last;
+bool ready = true;
+bool slow = false;
+bool line = false;
+long ping_time;
+long start_time;
 
 void setup() {
   // UltraSonic
@@ -72,15 +77,42 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, PIN_RBGLED>(leds, NUM_LEDS);
   FastLED.setBrightness(20);
 
+  // Set Red Color to LED
+  FastLED.showColor(Color(255, 0, 0));
+  delay(500);
+
+  String sendBuff;
+  Serial.println("conecting..");
+  // To make this code works, remember that the switch S1 should be set to "CAM"
+  while(1) {
+
+    if (Serial.available()) {
+      char c = Serial.read();
+      
+      if (c == '}')  {            
+        Serial.print("Wifi connected!!\nIP: ");
+        Serial.println(sendBuff);
+
+        // Set Red Green to LED
+        FastLED.showColor(Color(0, 255, 0));
+        sendBuff = "";
+        break;
+      } 
+      else {
+        sendBuff += c;
+      }
+
+    }
+  }
+  Serial.println("START$");
+  ping_time = millis();
+  start_time = ping_time;
+
 }
 
 void loop() {
-  int error;
+  float distance;
   bool sl = false, sc = false, sr = false;
-  // PID_Controller *pid = new PID_Controller(127, 0, 0, 0);
-  // put your main code here, to run repeatedly:
-  // analogWrite(PIN_Motor_PWMA, 0);
-  // analogWrite(PIN_Motor_PWMB, 0);
 
   int left = analogRead(PIN_ITR20001_LEFT);
   int center = analogRead(PIN_ITR20001_MIDDLE);
@@ -90,63 +122,165 @@ void loop() {
   if (center > SENS_THRESHOLD){ sc = true; }
   if (right > SENS_THRESHOLD){ sr = true; }
 
-  if (last == RIGHT){
-    FastLED.showColor(Color(255, 0, 255));
-  } else {
-    FastLED.showColor(Color(0, 255, 0));
-  } 
+  // if (last == RIGHT){
+  //   FastLED.showColor(Color(255, 0, 255));
+  // } else {
+  //   FastLED.showColor(Color(0, 255, 0));
+  // } 
+  send_ping();
+  // Serial.print(sl);
+  // Serial.print(" - ");
+  // Serial.print(sc);
+  // Serial.print(" - ");
+  // Serial.print(sr);
+  // Serial.println("test}");
 
-  if (ready){
-    if (sc && !sl && !sr){
-      Serial.println("cent: ");
+  // if (ready){
+  if (sc && !sl && !sr){
+    // Serial.println("cent: ");
+    FastLED.showColor(Color(0, 255, 0));
+    line = true;
+    if (slow){
       analogWrite(PIN_Motor_PWMA, MOTOR_SPEED);
       analogWrite(PIN_Motor_PWMB, MOTOR_SPEED);
-    } else if (sc && sl && !sr) {
-      Serial.println("center left: ");
+    }
+    else {
+      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED);
+      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED);
+    }
+    
+  } else if (sc && sl && !sr) {
+    FastLED.showColor(Color(0, 255, 0));
+    // Serial.println("center left: ");
+    line = true;
+    if (slow) {
       analogWrite(PIN_Motor_PWMA, MOTOR_SPEED);
       analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 2);
-      last = LEFT;
-    } else if (sc && !sl && sr) {
-      Serial.println("center right: ");
+    }
+    else {
+      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED);
+      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 6);
+    }
+    
+    
+    last = LEFT;
+  } else if (sc && !sl && sr) {
+    // Serial.println("center right: ");
+    FastLED.showColor(Color(0, 255, 0));
+    line = true;
+    if (slow) {
       analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 2);
       analogWrite(PIN_Motor_PWMB, MOTOR_SPEED);
-      last = RIGHT;
-    } else if (sc && !sl && sr) {
-      Serial.println("left: ");
+    }
+    else {
+      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 6);
+      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED);
+    }
+    last = RIGHT;
+  } else if (!sc && sl && !sr) {
+    // Serial.println("left: ");
+    FastLED.showColor(Color(0, 255, 0));
+    line = true;
+    // analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 2);
+    if (slow) {
       analogWrite(PIN_Motor_PWMA, MOTOR_SPEED);
       analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 4);
-      last = LEFT;
-    } else if (!sc && !sl && sr) {
-      Serial.print("right: ");
+    }
+    else {
+      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 2);
+      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 6);
+    }
+    last = LEFT;
+  } else if (!sc && !sl && sr) {
+    // Serial.print("right: ");
+    FastLED.showColor(Color(0, 255, 0));
+    line = true;
+    if (slow) {
       analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 4);
       analogWrite(PIN_Motor_PWMB, MOTOR_SPEED);
-      last = RIGHT;
-    } else if (!sc && !sl && !sr && last == LEFT) {
-      Serial.print("none left: ");
-      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED);
-      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 4);
-      // analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 4);
-      // analogWrite(PIN_Motor_PWMB, 0);
-    } else if (!sc && !sl && !sr && last == RIGHT) {
-      Serial.print("none right: ");
-      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 4);
-      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED);
-      // analogWrite(PIN_Motor_PWMA, 0);
-      // analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 4);
+    }
+    else {
+      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 6);
+      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 2);
+    }
+    last = RIGHT;
+  } else if (!sc && !sl && !sr && last == LEFT) {
+    // Serial.print("none left: ");
+    FastLED.showColor(Color(255, 0, 0));
+    if (line){
+      Serial.println("LINE$");
+      line = false;
     }
 
-    if (dist() < 10) {
-      ready = false;
-      analogWrite(PIN_Motor_PWMA, 0);
+    if (slow) {
+      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED);
+      // analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 4);
+      analogWrite(PIN_Motor_PWMB, 0);
+      // analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 4);
+    }
+    else {
+      analogWrite(PIN_Motor_PWMA, MOTOR_SPEED);
       analogWrite(PIN_Motor_PWMB, 0);
     }
-  } else {
-    float d = dist();
-    Serial.println(d);
-    if (d < 5) {
-      ready = true;
-      delay(2000);
+  } else if (!sc && !sl && !sr && last == RIGHT) {
+    // Serial.print("none right: ");
+    FastLED.showColor(Color(255, 0, 0));
+    if (line){
+      Serial.println("LINE$");
+      line = false;
     }
+    if (slow) {
+      // analogWrite(PIN_Motor_PWMA, MOTOR_SPEED / 4);
+      analogWrite(PIN_Motor_PWMA, 0);
+      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED);
+      // analogWrite(PIN_Motor_PWMB, MOTOR_SPEED / 4);
+    }
+    else {
+      analogWrite(PIN_Motor_PWMA, 0);
+      analogWrite(PIN_Motor_PWMB, MOTOR_SPEED);
+    }
+  }
+
+  distance = dist();
+  if (distance <= 10) {
+    ready = false;
+    analogWrite(PIN_Motor_PWMA, 0);
+    analogWrite(PIN_Motor_PWMB, 0);
+
+    send_obstacle(distance);
+    send_end_lap();
+  }
+  // } 
+  // else {
+  //   // float d = dist();
+  //   // Serial.println(d);
+  //   if (d < 5) {
+  //     ready = true;
+  //     delay(2000);
+  //   }
+  // }
+}
+
+void send_obstacle(float d){
+  Serial.print("OBSTACLE#");
+  Serial.print(d);
+  Serial.println("$");
+}
+
+void send_end_lap(){
+  long lap_time = millis() - start_time;
+  Serial.print("END#");
+  Serial.print(lap_time);
+  Serial.println("$");
+}
+
+void send_ping(){
+  if (millis() - ping_time > 4000){
+    Serial.println("????");
+    Serial.print("PING#");
+    Serial.print(millis());
+    Serial.print("#");
+    ping_time = millis();
   }
 }
 
@@ -168,4 +302,3 @@ uint32_t Color(uint8_t r, uint8_t g, uint8_t b)
 {
   return (((uint32_t)r << 16) | ((uint32_t)g << 8) | b);
 }
-
