@@ -18,5 +18,5 @@ Tambien hemos decidido hacerlo sin PID. En nuestro caso, lo controlamos con una 
 
 Para detectar el obstaculo, simplemente comprobamos todo el rato si el ultrasonidos detecta algo a menos de 7cm.
 
-Tenemos dos versiones del siguelineas, una en modo 'slow' y la otra no. Para activar el modo slow, hay que poner a 'true' la variable 'slow', y poner 'MOTOR_SPEED' a 125.
+Tenemos dos versiones del sigue-lineas, una en modo 'slow' y la otra modo rapido. Para activar el modo slow, hay que poner a 'true' la variable 'slow', y poner 'MOTOR_SPEED' a 125.
 Para poner el modo rapido, velocidad en 255 y 'slow' = false.
